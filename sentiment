@@ -1,0 +1,36 @@
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
+
+# Set device (GPU or CPU)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Replace "roberta-base" with your desired language model
+model_name = "roberta-base"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+
+
+# Assuming you have a list of texts called `texts`
+encoded_texts = tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(device)
+
+
+with torch.no_grad():
+    outputs = model(**encoded_texts)
+    document_embeddings = outputs.last_hidden_states.mean(dim=1)
+
+vectorizer = CountVectorizer()
+tf_matrix = vectorizer.fit_transform(texts)
+
+# Choose the number of topics (adjust as needed)
+num_topics = 5
+
+lda = LatentDirichletAllocation(n_components=num_topics, random_state=42)
+lda.fit(tf_matrix)
+
+print("Topics and Keywords:")
+for i, topic in enumerate(lda.components_):
+    print(f"Topic {i+1}:")
+    print(" ".join(vectorizer.get_feature_names_out()[topic.argsort()[-10:]]))
+
